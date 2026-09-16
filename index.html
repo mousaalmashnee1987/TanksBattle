@@ -60,6 +60,14 @@
     background:#070b14;
   }
   canvas{display:block;width:100%;height:100%;touch-action:none}
+  #missionBar{
+    width:min(94vw,480px,62vh); min-height:28px; display:flex; align-items:center; justify-content:space-between;
+    gap:8px; padding:5px 10px; border:1px solid rgba(56,232,255,.2); border-radius:10px;
+    background:linear-gradient(90deg,rgba(8,20,38,.85),rgba(28,18,42,.82)); color:#94b8d0;
+    font-size:10px; letter-spacing:.2px; box-shadow:0 6px 18px rgba(0,0,0,.25); overflow:hidden;
+  }
+  #missionText{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  #comboText{color:#ffe08a; font-weight:900; white-space:nowrap; text-shadow:0 0 10px rgba(255,193,59,.6)}
   #scan{position:absolute;inset:0;pointer-events:none;
     background:repeating-linear-gradient(0deg, rgba(0,0,0,.16) 0 1px, transparent 1px 3px);
     mix-blend-mode:multiply; opacity:.55}
@@ -80,6 +88,9 @@
     -webkit-background-clip:text;background-clip:text;color:transparent;
     filter:drop-shadow(0 4px 14px rgba(255,150,40,.45));
   }
+  #scStart{background-image:linear-gradient(180deg,rgba(5,12,25,.48),rgba(3,6,12,.96)),url('assets/tanksbattle-keyart.jpg');background-size:cover;background-position:center}
+  .brand-badge{width:clamp(52px,14vw,82px);height:clamp(52px,14vw,82px);object-fit:contain;filter:drop-shadow(0 0 18px rgba(56,232,255,.65));animation:badgeFloat 3.2s ease-in-out infinite}
+  @keyframes badgeFloat{50%{transform:translateY(-5px) rotate(-2deg);filter:drop-shadow(0 0 26px rgba(56,232,255,.9))}}
   .sub{font-size:clamp(11px,3.2vw,14px);color:#a9c9e0;max-width:330px;line-height:1.8}
   .kbd{display:inline-block;background:#16223a;border:1px solid var(--line);border-radius:6px;padding:1px 7px;margin:0 2px;font-size:11px;color:var(--cyan)}
   .bigBtn{
@@ -98,6 +109,15 @@
   .stat b{color:var(--amber);font-size:15px}
   .legend{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:10.5px;color:#9fc0d8;max-width:320px}
   .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-inline-end:5px;vertical-align:-1px}
+  .upgrade-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;width:min(100%,360px)}
+  .upgrade-card{font-family:inherit;color:#e8f3ff;text-align:center;cursor:pointer;min-height:112px;padding:8px 5px;border-radius:12px;
+    border:1px solid rgba(56,232,255,.38);background:linear-gradient(180deg,rgba(35,58,88,.92),rgba(13,22,40,.95));
+    box-shadow:0 8px 18px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.09);transition:transform .16s,box-shadow .16s,border-color .16s}
+  .upgrade-card:hover,.upgrade-card:focus-visible{transform:translateY(-3px);border-color:#7ff3ff;box-shadow:0 10px 25px rgba(56,232,255,.28),inset 0 1px 0 rgba(255,255,255,.16);outline:none}
+  .upgrade-card:active{transform:scale(.97)}
+  .upgrade-card .uicon{display:block;font-size:24px;line-height:1.1;margin-bottom:4px;filter:drop-shadow(0 0 7px rgba(255,214,112,.55))}
+  .upgrade-card strong{display:block;color:#ffe08a;font-size:11px;line-height:1.2}
+  .upgrade-card small{display:block;color:#a9c9e0;font-size:9px;line-height:1.35;margin-top:4px}
   /* ---------- TOUCH ---------- */
   #touch{width:min(94vw,480px,62vh);display:none;justify-content:space-between;align-items:flex-end;margin-top:2px}
   #touch.on{display:flex}
@@ -133,11 +153,14 @@
     </div>
   </div>
 
+  <div id="missionBar"><span id="missionText">المهمة: دافع عن القاعدة</span><span id="comboText">كومبو ×0</span></div>
+
   <div id="stage">
     <canvas id="game"></canvas>
     <div id="scan"></div><div id="vig"></div>
 
     <div class="screen on" id="scStart">
+      <img class="brand-badge" src="assets/tank-badge.png" alt="">
       <div class="tag">RETRO ARCADE 1990</div>
       <div class="title">معركة الدبابات</div>
       <div class="sub">دافع عن قاعدتك 🦅 ودمّر كل دبابات العدو!<br>
@@ -166,6 +189,14 @@
       <div class="title" style="font-size:clamp(20px,6vw,32px)">إيقاف مؤقت</div>
       <button class="bigBtn" id="resumeBtn">متابعة</button>
       <button class="bigBtn amber" id="restartBtn2" style="padding:8px 22px;font-size:13px">إعادة البدء</button>
+    </div>
+
+    <div class="screen" id="scUpgrade">
+      <div class="tag">COMMAND DECK</div>
+      <div class="title" style="font-size:clamp(20px,6vw,32px)">اختر تطويرك</div>
+      <div class="sub">الجولة التالية أصعب — اختر ميزة واحدة لتبني دبابتك.</div>
+      <div class="upgrade-grid" id="upgradeChoices"></div>
+      <div class="sub" style="font-size:10px">يمكنك أيضاً الضغط على <span class="kbd">1</span> <span class="kbd">2</span> <span class="kbd">3</span></div>
     </div>
 
     <div class="screen" id="scOver">
@@ -398,10 +429,19 @@ const ARMOR_COLS=[['#c06ee0','#6a2b8f'],['#e8d95a','#9a8a12'],['#e8a05a','#a05c1
 
 let state='menu';
 let map, tanks=[], player=null, bullets=[], parts=[], pops=[], powerups=[];
-let score=0, lives=3, level=1, highScore=0;
+let score=0, lives=3, level=1, highScore=0, combo=0, comboTimer=0, comboBest=0;
 let queue=[], spawnIdx=0, spawnTimer=0, respawnTimer=0, maxAlive=4;
 let freezeT=0, shovelT=0, shake=0, shakeMag=0, baseAlive=true, flashT=0;
-let stateTimer=0, gameTime=0, waterT=0;
+let stateTimer=0, gameTime=0, waterT=0, introToken=0;
+let playerUpgrades={rapid:0, engine:0, scatter:0, armor:0};
+let pendingUpgradeChoices=[];
+const UPGRADE_POOL=[
+  {id:'rapid',icon:'⚡',title:'مفاعل سريع',desc:'سرعة إطلاق أعلى 18%.'},
+  {id:'engine',icon:'🏎️',title:'محرك نبضي',desc:'حركة أسرع ومراوغة أقوى.'},
+  {id:'scatter',icon:'✦',title:'مدفع مزدوج',desc:'طلقات مزدوجة بعد كل ترقية.'},
+  {id:'armor',icon:'🛡️',title:'درع تكتيكي',desc:'درع بداية أطول بـ 2.5 ثانية.'},
+  {id:'core',icon:'★',title:'نواة طاقة',desc:'ترقية سلاح فورية وقذيفة أقوى.'}
+];
 try{ highScore = parseInt(localStorage.getItem('tankHS')||'0')||0; }catch(e){ highScore=0; }
 
 const input={up:false,down:false,left:false,right:false,fire:false};
@@ -453,10 +493,11 @@ let playerPower=0;
 function applyPower(){
   if(!player) return;
   player.power=playerPower;
-  player.speed = 110 + Math.min(playerPower,2)*10;
-  player.bulletSpeed = 250 + playerPower*45;
-  player.maxBullets = playerPower>=2?2:1;
-  player.fireRate = playerPower>=2?0.26:0.32;
+  player.speed = 110 + Math.min(playerPower,2)*10 + playerUpgrades.engine*12;
+  player.bulletSpeed = 250 + playerPower*45 + playerUpgrades.engine*10;
+  player.maxBullets = (playerPower>=2?2:1) + playerUpgrades.scatter;
+  player.fireRate = Math.max(.12, (playerPower>=2?.26:.32) * Math.pow(.82,playerUpgrades.rapid));
+  player.shield = Math.max(player.shield, 2.6 + playerUpgrades.armor*2.5);
 }
 
 function makeQueue(lv){
@@ -624,7 +665,10 @@ function killTank(t,byPlayer=true){
   t.alive=false;
   explode(t.x+t.w/2,t.y+t.h/2,t.w, t.isPlayer);
   if(!t.isPlayer){
-    score+=t.pts; addPop(t.x+t.w/2,t.y,'+'+t.pts,'#ffd76a');
+    if(byPlayer){ combo=Math.min(9,combo+1); comboTimer=3.2; comboBest=Math.max(comboBest,combo); }
+    const multiplier=byPlayer ? 1 + Math.max(0,combo-1)*.15 : 1;
+    const earned=Math.round(t.pts*multiplier);
+    score+=earned; addPop(t.x+t.w/2,t.y,'+'+earned+(combo>1?'  ×'+combo:''),'#ffd76a');
     if(t.bonus) dropPowerUp();
     updateHUD();
   }
@@ -634,7 +678,7 @@ function playerDied(){
   playerPower=Math.max(0,playerPower-1);
   lives--;
   updateHUD();
-  if(lives<0){ gameOver('دُمِّرت كل دباباتك!'); }
+  if(lives<=0){ gameOver('دُمِّرت كل دباباتك!'); }
   else { player=null; respawnTimer=1.3; }
 }
 function baseDestroyed(){
@@ -714,6 +758,7 @@ function update(dt){
   gameTime+=dt; waterT+=dt;
   if(shake>0){ shake-=dt; if(shake<=0){shake=0;shakeMag=0;} }
   if(flashT>0) flashT-=dt;
+  if(comboTimer>0){ comboTimer-=dt; if(comboTimer<=0) combo=0; }
   // timers
   if(freezeT>0) freezeT-=dt;
   if(shovelT>0){ shovelT-=dt; if(shovelT<=0){ for(const[r,c] of BASE_WALLS) if(map[r][c]===2) map[r][c]=1; } }
@@ -729,7 +774,7 @@ function update(dt){
       if(input.fire) fire(player);
     }else if(!player && respawnTimer>0){
       respawnTimer-=dt;
-      if(respawnTimer<=0 && lives>=0 && state==='playing'){
+      if(respawnTimer<=0 && lives>0 && state==='playing'){
         const x=4*TILE+OFF,y=(ROWS-1)*TILE+OFF;
         let free=true; for(const o of tanks) if(o.alive&&overlap(x,y,TSIZE,TSIZE,o.x,o.y,o.w,o.h)) free=false;
         if(free) spawnPlayer(); else respawnTimer=.4;
@@ -761,7 +806,13 @@ function update(dt){
     }
   } else if(state==='clear'){
     stateTimer+=dt;
-    if(stateTimer>1.6){ level++; if(level>12){ victory(); } else startLevel(level); }
+    if(stateTimer>1.6){
+      level++;
+      if(level>12){ victory(); }
+      else { state='upgrade'; stateTimer=0; showUpgrade(); }
+    }
+  } else if(state==='upgrade'){
+    stateTimer+=dt;
   } else if(state==='dying'){
     stateTimer+=dt;
     if(stateTimer>1.8) showGameOver();
@@ -799,6 +850,12 @@ function draw(){
   const g=ctx.createLinearGradient(0,0,0,H);
   g.addColorStop(0,'#0c1220'); g.addColorStop(1,'#080d17');
   ctx.fillStyle=g; ctx.fillRect(-12,-12,W+24,H+24);
+  const glowA=ctx.createRadialGradient(42,36,4,42,36,150);
+  glowA.addColorStop(0,'rgba(24,180,255,.13)'); glowA.addColorStop(1,'rgba(24,180,255,0)');
+  ctx.fillStyle=glowA; ctx.fillRect(-20,-20,300,240);
+  const glowB=ctx.createRadialGradient(W-36,H-28,4,W-36,H-28,170);
+  glowB.addColorStop(0,'rgba(255,142,40,.12)'); glowB.addColorStop(1,'rgba(255,142,40,0)');
+  ctx.fillStyle=glowB; ctx.fillRect(W-300,H-240,320,260);
   ctx.strokeStyle='rgba(120,170,220,.05)'; ctx.lineWidth=1;
   for(let i=0;i<=COLS;i++){ ctx.beginPath(); ctx.moveTo(i*TILE,0); ctx.lineTo(i*TILE,H); ctx.stroke(); }
   for(let i=0;i<=ROWS;i++){ ctx.beginPath(); ctx.moveTo(0,i*TILE); ctx.lineTo(W,i*TILE); ctx.stroke(); }
@@ -852,6 +909,14 @@ function draw(){
   if(shovelT>0 && shovelT<4 && Math.floor(shovelT*6)%2===0){
     ctx.globalAlpha=.25; ctx.fillStyle='#cfe3f5'; ctx.fillRect(6*TILE,13*TILE,3*TILE,2*TILE); ctx.globalAlpha=1;
   }
+  // scanner sweep and arena border energy
+  const sweep=(gameTime*38)%H;
+  const sg=ctx.createLinearGradient(0,sweep-18,0,sweep+18);
+  sg.addColorStop(0,'rgba(56,232,255,0)'); sg.addColorStop(.5,'rgba(56,232,255,.07)'); sg.addColorStop(1,'rgba(56,232,255,0)');
+  ctx.fillStyle=sg; ctx.fillRect(0,sweep-18,W,36);
+  ctx.globalAlpha=.65+.2*Math.sin(gameTime*4);
+  ctx.strokeStyle='#2ee7ff'; ctx.lineWidth=1.2; ctx.strokeRect(1.5,1.5,W-3,H-3);
+  ctx.globalAlpha=1;
   ctx.restore();
 }
 
@@ -940,6 +1005,7 @@ function drawTank(t){
 
   ctx.save();
   ctx.translate(cx,cy); ctx.rotate(t.dir*Math.PI/2);
+  if(t.isPlayer){ ctx.shadowColor='#34e5ff'; ctx.shadowBlur=11; }
   // treads
   const tw=6.5;
   for(const sx of [-1,1]){
@@ -959,6 +1025,9 @@ function drawTank(t){
   bg.addColorStop(0,c1); bg.addColorStop(.55,mix(c1,c2,.45)); bg.addColorStop(1,c2);
   ctx.fillStyle=bg; roundRect(-s/2+tw-1,-s/2+2.5,s-2*tw+2,s-5,4); ctx.fill();
   ctx.strokeStyle='rgba(0,0,0,.45)'; ctx.lineWidth=1.2; ctx.stroke();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle=t.isPlayer?'rgba(255,246,168,.72)':'rgba(255,255,255,.18)'; ctx.lineWidth=1;
+  roundRect(-s/2+tw+1,-s/2+4,s-2*tw,s-8,3); ctx.stroke();
   // body highlight
   ctx.fillStyle='rgba(255,255,255,.18)';
   roundRect(-s/2+tw+0.5,-s/2+4,s-2*tw-1,4,2); ctx.fill();
@@ -1010,6 +1079,7 @@ function drawBullet(b){
   ctx.shadowColor=col; ctx.shadowBlur=12;
   ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(b.x,b.y,b.power>=2?3.4:2.8,0,7); ctx.fill();
   ctx.fillStyle=col; ctx.beginPath(); ctx.arc(b.x,b.y,b.power>=2?2:1.6,0,7); ctx.fill();
+  if(b.power>=2){ ctx.strokeStyle='rgba(255,239,154,.75)'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(b.x,b.y,6+Math.sin(gameTime*12),0,7); ctx.stroke(); }
   ctx.restore();
 }
 function drawPowerUp(p){
@@ -1040,7 +1110,7 @@ function hex(h){ if(h[0]!=='#') return [200,200,200]; const n=parseInt(h.slice(1
 
 /* ---------------- FLOW ---------------- */
 const el=id=>document.getElementById(id);
-const screens={start:el('scStart'),level:el('scLevel'),pause:el('scPause'),over:el('scOver')};
+const screens={start:el('scStart'),level:el('scLevel'),pause:el('scPause'),upgrade:el('scUpgrade'),over:el('scOver')};
 function showScreen(name){
   for(const k in screens) screens[k].classList.toggle('on', k===name);
 }
@@ -1050,10 +1120,15 @@ function updateHUD(){
   el('vLives').textContent=Math.max(0,lives);
   let alive=0; for(const t of tanks) if(t.alive&&!t.isPlayer) alive++;
   el('vEnemy').textContent=queue.length+alive;
+  el('comboText').textContent='كومبو ×'+combo+(comboTimer>0?'  '+comboTimer.toFixed(1)+'s':'');
+  if(state==='playing') el('missionText').textContent=combo>1?'المهمة: حافظ على السلسلة!':'المهمة: دافع عن القاعدة';
+  else if(state==='upgrade') el('missionText').textContent='سطح القيادة: اختر تطويراً واحداً';
+  else if(state==='gameover') el('missionText').textContent='النتيجة النهائية — أحسنت أيها القائد';
 }
 function newGame(){
   Snd.init();
-  score=0; lives=3; level=1; playerPower=0;
+  score=0; lives=3; level=1; playerPower=0; combo=0; comboTimer=0; comboBest=0;
+  playerUpgrades={rapid:0, engine:0, scatter:0, armor:0};
   startLevel(1);
 }
 function startLevel(lv){
@@ -1063,11 +1138,36 @@ function startLevel(lv){
   maxAlive=4+Math.min(2,Math.floor(lv/4)); freezeT=0; shovelT=0; baseAlive=true;
   spawnPlayer();
   updateHUD();
-  state='intro'; stateTimer=0;
+  state='intro'; stateTimer=0; introToken++;
+  const token=introToken;
   el('lvlText').textContent=lv;
   el('lvlSub').textContent = lv===1? 'دافع عن القاعدة!' : 'العدو أصبح أقوى… استعد!';
   showScreen('level');
-  setTimeout(()=>{ if(state==='intro'){ state='playing'; showScreen(null); } }, 1500);
+  setTimeout(()=>{ if(state==='intro' && token===introToken){ state='playing'; showScreen(null); updateHUD(); } }, 1500);
+}
+function showUpgrade(){
+  pendingUpgradeChoices=[...UPGRADE_POOL].sort(()=>Math.random()-.5).slice(0,3);
+  const host=el('upgradeChoices');
+  host.replaceChildren();
+  pendingUpgradeChoices.forEach((u,i)=>{
+    const button=document.createElement('button');
+    button.className='upgrade-card'; button.type='button'; button.dataset.choice=String(i);
+    button.innerHTML='<span class="uicon">'+u.icon+'</span><strong>'+u.title+'</strong><small>'+u.desc+'</small>';
+    button.addEventListener('click',()=>chooseUpgrade(i));
+    host.appendChild(button);
+  });
+  showScreen('upgrade'); updateHUD();
+}
+function chooseUpgrade(index){
+  if(state!=='upgrade' || !pendingUpgradeChoices[index]) return;
+  const u=pendingUpgradeChoices[index];
+  if(u.id==='core') playerPower=Math.min(3,playerPower+1);
+  else playerUpgrades[u.id]++;
+  applyPower();
+  addPop(BASE_C*TILE+16,BASE_R*TILE-10,u.title,'#ffe08a');
+  Snd.power();
+  pendingUpgradeChoices=[];
+  startLevel(level);
 }
 function gameOver(msg){
   if(state==='dying'||state==='gameover') return;
@@ -1102,11 +1202,15 @@ addEventListener('keydown',e=>{
   if(e.code==='Space'||e.code==='KeyJ'||e.code==='Enter'){ e.preventDefault(); input.fire=true;
     if(state==='menu'){ newGame(); } }
   if(e.code==='KeyP'||e.code==='Escape'){ e.preventDefault(); togglePause(); }
+  if(state==='upgrade' && ['Digit1','Digit2','Digit3'].includes(e.code)){ chooseUpgrade(Number(e.code.slice(-1))-1); }
   if(e.code==='KeyM'){ toggleSound(); }
 });
 addEventListener('keyup',e=>{
   if(e.code in KEYMAP){ const d=KEYMAP[e.code]; input[DIRKEY[d]]=false; if(lastDir===d) lastDir=null; }
   if(e.code==='Space'||e.code==='KeyJ'||e.code==='Enter') input.fire=false;
+});
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden && state==='playing') togglePause();
 });
 // touch
 const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints>0;
