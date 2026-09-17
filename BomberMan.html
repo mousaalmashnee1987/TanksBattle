@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+<!-- Production-ready single-file build: no runtime framework dependency -->
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f25">
+<meta name="description" content="Bomber Blast — a fast, accessible classic Bomberman-style arcade game.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E💣%3C/text%3E%3C/svg%3E">
 <title>Bomber Blast - Classic Bomberman</title>
-<script src="https://cdn.tailwindcss.com"></script>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 .hidden{display:none!important}
@@ -51,6 +54,11 @@ body.touch .mobile-controls{display:flex}
 .legend{background:rgba(0,0,0,.3);border-radius:12px;padding:8px}
 .newbest{animation:blink .7s infinite;background:linear-gradient(90deg,#ff0,#ff8800);color:#000;font-weight:900;padding:2px 12px;border-radius:999px;display:inline-block;margin-top:6px}
 .stat-pill{background:rgba(0,0,0,.35);border-radius:999px;padding:3px 10px;font-weight:800;font-size:13px;border:1px solid rgba(255,255,255,.12)}
+
+/* Self-contained utility classes: keeps GitHub Pages fully offline-capable. */
+.flex{display:flex}.grid{display:grid}.items-center{align-items:center}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.text-left{text-align:left}.font-black{font-weight:900}.leading-none{line-height:1}.gap-2{gap:8px}.mb-2{margin-bottom:8px}.mt-2{margin-top:8px}.flex-1{flex:1}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid-cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:520px){.grid-cols-5{gap:4px!important}.hud-card{padding:6px 3px}.hud-label{font-size:8px}.hud-val{font-size:14px}.stat-pill{font-size:11px;padding:3px 7px}.card{padding:20px 14px}.title-grad{font-size:20px!important}.grid-cols-2{grid-template-columns:1fr}.grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
@@ -64,9 +72,9 @@ body.touch .mobile-controls{display:flex}
       </div>
     </div>
     <div class="flex gap-2">
-      <button id="muteBtn" class="icon-btn" title="Sound">🔊</button>
-      <button id="pauseBtn" class="icon-btn" title="Pause">⏸️</button>
-      <button id="restartBtn" class="icon-btn" title="Restart">🔄</button>
+      <button id="muteBtn" class="icon-btn" title="Toggle sound" aria-label="Toggle sound">🔊</button>
+      <button id="pauseBtn" class="icon-btn" title="Pause game" aria-label="Pause game">⏸️</button>
+      <button id="restartBtn" class="icon-btn" title="Restart game" aria-label="Restart game">🔄</button>
     </div>
   </header>
 
@@ -85,8 +93,9 @@ body.touch .mobile-controls{display:flex}
   </div>
 
   <div id="canvasWrap">
-    <canvas id="gameCanvas" width="600" height="520"></canvas>
-    <div id="toast"></div>
+    <canvas id="gameCanvas" width="600" height="520" role="img" aria-label="Bomber Blast game board"></canvas>
+    <div id="loadingNotice" class="hidden" aria-live="polite">Loading game…</div>
+    <div id="toast" role="status" aria-live="polite"></div>
   </div>
 
   <div class="mobile-controls">
@@ -124,7 +133,7 @@ body.touch .mobile-controls{display:flex}
       <div class="legend">💣 +1 Bomb<br>🔥 +1 Fire range<br>⚡ + Speed<br>❤️ + Life &nbsp; 🛡️ Shield</div>
     </div>
     <div style="margin:10px 0;font-weight:800">🏆 Best: <span id="startBest" style="color:#ffd75e">0</span></div>
-    <button id="startBtn" class="big-btn">▶ START GAME</button>
+    <button id="startBtn" class="big-btn" type="button" autofocus>▶ START GAME</button>
     <div style="font-size:11px;opacity:.6;margin-top:10px">Tip: bombs chain-react! Hide behind walls. Don't trap yourself!</div>
   </div>
 </div>
@@ -171,7 +180,7 @@ const startScreen=document.getElementById('startScreen'),overScreen=document.get
 
 let map=[],powerMap=[],bombs=[],flames=[],enemies=[],particles=[],floatTexts=[];
 let player={x:46,y:46,w:28,h:28,speed:135,maxBombs:1,range:2,speedLevel:0,dir:'down',moving:false,alive:true,invincible:0,anim:0};
-let score=0,lives=3,level=1,timeLeft=120,state='menu',difficulty='normal',muted=false,shake=0,animTime=0,portal=null,lastSec=-1,wasBest=false;
+let score=0,lives=3,level=1,timeLeft=120,state='menu',difficulty='normal',muted=false,shake=0,animTime=0,portal=null,lastSec=-1,wasBest=false,levelTimer=null;
 let best=0; try{best=parseInt(localStorage.getItem('bomberBlastBest')||'0')||0;}catch(e){best=0;}
 let keys={},touch={up:false,down:false,left:false,right:false};
 if('ontouchstart' in window||navigator.maxTouchPoints>0)document.body.classList.add('touch');
@@ -323,10 +332,11 @@ function spawnPortal(){
 }
 function nextLevel(){
   if(state!=='playing')return;
+  if(levelTimer)clearTimeout(levelTimer);
   state='transition';
   const bonus=500+Math.floor(timeLeft)*5;score+=bonus;updateHUD();playWin();
   showToast('Level '+level+' Clear! +'+bonus,2000);
-  setTimeout(()=>{level++;generateLevel(level);state='playing';updateHUD();showToast('Level '+level+' - GO! 💣',1800);},2000);
+  levelTimer=setTimeout(()=>{if(state!=='transition')return;level++;generateLevel(level);state='playing';updateHUD();showToast('Level '+level+' - GO! 💣',1800);levelTimer=null;},2000);
 }
 function killEnemy(idx,e){
   enemies.splice(idx,1);
@@ -634,7 +644,7 @@ function togglePause(){
   if(state==='playing'){state='paused';pauseScreen.classList.remove('hidden');playClick();}
   else if(state==='paused'){state='playing';pauseScreen.classList.add('hidden');playClick();lastTime=0;}
 }
-function goMenu(){playClick();state='menu';overScreen.classList.add('hidden');pauseScreen.classList.add('hidden');document.getElementById('startBest').textContent=best;startScreen.classList.remove('hidden');generateLevel(1);}
+function goMenu(){playClick();if(levelTimer)clearTimeout(levelTimer);levelTimer=null;state='menu';overScreen.classList.add('hidden');pauseScreen.classList.add('hidden');document.getElementById('startBest').textContent=best;startScreen.classList.remove('hidden');generateLevel(1);}
 document.getElementById('startBtn').addEventListener('click',startGame);
 document.getElementById('againBtn').addEventListener('click',startGame);
 document.getElementById('menuBtn').addEventListener('click',goMenu);
@@ -643,11 +653,11 @@ document.getElementById('quitBtn').addEventListener('click',goMenu);
 document.getElementById('pauseBtn').addEventListener('click',()=>{if(state==='playing'||state==='paused')togglePause();});
 document.getElementById('restartBtn').addEventListener('click',()=>{if(state==='playing'||state==='paused'){pauseScreen.classList.add('hidden');startGame();}});
 document.getElementById('muteBtn').addEventListener('click',function(){muted=!muted;this.textContent=muted?'🔇':'🔊';if(!muted)playClick();});
-document.querySelectorAll('.diff-btn').forEach(b=>b.addEventListener('click',function(){ensureAudio();playClick();difficulty=this.dataset.d;document.querySelectorAll('.diff-btn').forEach(x=>x.classList.remove('sel-easy','sel-normal','sel-hard'));this.classList.add(difficulty==='easy'?'sel-easy':difficulty==='hard'?'sel-hard':'sel-normal');}));
+document.querySelectorAll('.diff-btn').forEach(b=>{b.setAttribute('aria-pressed',b.dataset.d===difficulty?'true':'false');b.addEventListener('click',function(){ensureAudio();playClick();difficulty=this.dataset.d;document.querySelectorAll('.diff-btn').forEach(x=>{x.classList.remove('sel-easy','sel-normal','sel-hard');x.setAttribute('aria-pressed',x===this?'true':'false');});this.classList.add(difficulty==='easy'?'sel-easy':difficulty==='hard'?'sel-hard':'sel-normal');});});
 document.addEventListener('keydown',e=>{
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
   keys[e.code]=true;ensureAudio();
-  if(e.code==='Space'||e.code==='KeyF'){if(state==='playing')placeBomb();else if(state==='menu')startGame();}
+  if(!e.repeat&&(e.code==='Space'||e.code==='KeyF')){if(state==='playing')placeBomb();else if(state==='menu')startGame();}
   if(e.code==='KeyP'||e.code==='Escape')togglePause();
   if(e.code==='Enter'){if(state==='menu')startGame();else if(state==='gameover')startGame();}
 });
@@ -663,7 +673,11 @@ const bombBtn=document.getElementById('bombBtn');
 bombBtn.addEventListener('touchstart',e=>{e.preventDefault();placeBomb();},{passive:false});
 bombBtn.addEventListener('mousedown',e=>{e.preventDefault();placeBomb();});
 document.addEventListener('contextmenu',e=>{if(e.target.closest('#dpad')||e.target.closest('#bombBtn')||e.target.closest('#gameCanvas'))e.preventDefault();});
+window.addEventListener('blur',()=>{if(state==='playing')togglePause();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='playing')togglePause();});
+window.addEventListener('beforeunload',()=>{try{localStorage.setItem('bomberBlastBest',String(best));}catch(e){}});
 document.getElementById('startBest').textContent=best;
+try{document.querySelectorAll('.diff-btn').forEach(b=>b.setAttribute('aria-pressed',b.dataset.d===difficulty?'true':'false'));}catch(e){}
 generateLevel(1);state='menu';updateHUD();
 requestAnimationFrame(loop);
 })();
